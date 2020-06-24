@@ -40,10 +40,9 @@
   (->> (for [ns (:pod/namespaces pod-config)
              :let [ns-name (:pod/ns ns)]
              var (:pod/vars ns)
-             :let [{:var/keys [name fn]} var]]
-         [(str ns-name "/" name) fn])
+             :let [{:var/keys [name fn] :racer/keys [include-context?]} var]]
+         [(str ns-name "/" name) [fn include-context?]])
        (into {})))
-
 
 
 ;; I/O accounting
@@ -74,6 +73,15 @@
 
 ;; Launch function
 
+(defn build-context
+  [id]
+  {:out-fn (fn [string]
+             (write-ben {"id" id
+                         "out" string}))
+   :err-fn (fn [string]
+             (write-ben {"id" id
+                         "err" string}))})
+
 (defn launch
   "Launch pod using the supplied config. Config is a map describing pod
   behavior. Example:
@@ -81,10 +89,23 @@
   {:pod/namespaces
    [{:pod/ns \"pod.math\"
      :pod/vars [{:var/name \"add\"
-                 :var/fn +
+                 :var/fn +}
                 {:var/name \"subtract\"
                  :var/fn -}]}]}
-  "
+
+  If a var's function needs to print to stdout or stderr via the pod interface,
+  set :racer/include-context? to true and the first argument to the function
+  will be a map with :out-fn and :err-fn set to functions that when called will
+  send the passed string back to the parent process. Example of a function that
+  prints to stdout:
+
+  {:pod/namespaces
+   [{:pod/ns \"pod.mathio\"
+     :pod/vars [{:var/name \"add-and-print\"
+                 :var/fn (fn [ctx & args]
+                           (let [{:keys [out-fn]} ctx]
+                             (out-fn (apply + args))))
+                 :racer/include-context? true}]}]}"
   [pod-config]
   (let [describe-map (pod-config->describe-map pod-config)
         fn-lookup (pod-config->fn-lookup pod-config)
@@ -97,7 +118,9 @@
             :describe (do (write-ben describe-map)
                           (recur))
             :invoke (do (try
-                          (let [invoke-fn (fn-lookup var)
+                          (let [[invoke-fn include-context?] (fn-lookup var)
+                                args (cond->> args
+                                       include-context? (cons (build-context id)))
                                 result (apply invoke-fn args)]
                             (write-ben (format-result encode-fn result id)))
                           (catch Throwable e
