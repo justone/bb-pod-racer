@@ -17,7 +17,8 @@
   [this]
   ; (binding [*out* *err*]
   ;   (prn :flush))
-  (bencode/write-ben {"id" (.state this) "flush" ""}))
+  (bencode/write-ben {"id" (.state this)
+                      "flush" ""}))
 
 (defn -write
   ([this char-arr]
@@ -29,8 +30,6 @@
                     (char-array)
                     (String.))]
      ; (binding [*out* *err*]
-     ;   (prn :ingredients char-arr offset len)
-     ;   (prn :final id)
-     ;   (prn :print (str "|" string "|")))
+     ;   (prn :print string))
      (bencode/write-ben {"id" id
                          "print" string}))))
