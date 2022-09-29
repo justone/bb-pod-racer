@@ -14,11 +14,9 @@
   [_this])
 
 (defn -flush
-  [this]
-  ; (binding [*out* *err*]
-  ;   (prn :flush))
-  (bencode/write-ben {"id" (.state this)
-                      "flush" ""}))
+  [_this]
+  ;; Noop, as print flushes on Babashka side
+  )
 
 (defn -write
   ([this char-arr]
@@ -29,7 +27,4 @@
                     (subvec offset (+ offset len))
                     (char-array)
                     (String.))]
-     ; (binding [*out* *err*]
-     ;   (prn :print string))
-     (bencode/write-ben {"id" id
-                         "print" string}))))
+     (bencode/write-ben {"id" id "out" string}))))
