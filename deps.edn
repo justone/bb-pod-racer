@@ -1,7 +1,6 @@
 {:aliases {:build
            {:deps {io.github.seancorfield/build-clj
                    {:git/tag "v0.8.3" :git/sha "7ac1f8d"}}
-            :paths [".build"]
             :ns-default build}}
  :deps/prep-lib {:alias :build
                  :fn prep
