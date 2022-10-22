@@ -4,7 +4,8 @@
               :extends java.io.Writer
               :state state
               :init init
-              :constructors {[String] []}))
+              :constructors {[String] []})
+  (:import [java.util Arrays]))
 
 (defn -init
   [id]
@@ -19,12 +20,12 @@
   )
 
 (defn -write
-  ([this char-arr]
-   (-write this char-arr 0 (count char-arr)))
+  ([this value]
+   (let [char-arr (cond-> value
+                    (string? value) .toCharArray
+                    (int? value) Character/toChars)]
+     (-write this char-arr 0 (count char-arr))))
   ([this char-arr offset len]
    (let [id (.state this)
-         string (-> (vec char-arr)
-                    (subvec offset (+ offset len))
-                    (char-array)
-                    (String.))]
-     (bencode/write-ben {"id" id "out" string}))))
+         sub-char-arr (Arrays/copyOfRange char-arr offset (+ offset len))]
+     (bencode/write-ben {"id" id "out" (String. sub-char-arr)}))))

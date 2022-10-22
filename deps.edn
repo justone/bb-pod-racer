@@ -1,7 +1,10 @@
-{:aliases {:build
-           {:deps {io.github.seancorfield/build-clj
-                   {:git/tag "v0.8.3" :git/sha "7ac1f8d"}}
-            :ns-default build}}
+{:aliases {:build {:deps {io.github.seancorfield/build-clj
+                          {:git/tag "v0.8.3" :git/sha "7ac1f8d"}}
+                   :ns-default build}
+           :repl {:extra-deps {io.github.justone/cljdev {:git/sha "e3acb0fefcb3d97b70f4ef26c9064b18c73daa28"}}
+                  :exec-fn cljdev.repl/start}
+           :test {:deps {lambdaisland/kaocha {:mvn/version "1.70.1086"}}
+                  :main-opts ["-m" "kaocha.runner"]}}
  :deps/prep-lib {:alias :build
                  :fn prep
                  :ensure "target/classes"}
