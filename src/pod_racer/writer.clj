@@ -7,6 +7,8 @@
               :constructors {[String] []})
   (:import [java.util Arrays]))
 
+(set! *warn-on-reflection* true)
+
 (defn -init
   [id]
   [[] id])
@@ -22,10 +24,10 @@
 (defn -write
   ([this value]
    (let [char-arr (cond-> value
-                    (string? value) .toCharArray
+                    (string? value) char-array
                     (int? value) Character/toChars)]
      (-write this char-arr 0 (count char-arr))))
   ([this char-arr offset len]
-   (let [id (.state this)
-         sub-char-arr (Arrays/copyOfRange char-arr offset (+ offset len))]
+   (let [id (.state ^pod-racer.PodWriter this)
+         ^"[C" sub-char-arr (Arrays/copyOfRange ^"[C" char-arr (int offset) (int (+ offset len)))]
      (bencode/write-ben {"id" id "out" (String. sub-char-arr)}))))
