@@ -8,29 +8,29 @@
 
 ;; Config parsing
 
-(defn ns->describe
+(defn- ns->describe
   [pod-ns]
   {"name" (:pod/ns pod-ns)
    "vars" (mapv #(hash-map "name" (:var/name %)) (:pod/vars pod-ns))})
 
-(defn pod-config->describe-map
+(defn- pod-config->describe-map
   [pod-config]
   {"format" "edn"
    "namespaces" (mapv ns->describe (:pod/namespaces pod-config))})
 
-(defn pod-config->fn-lookup
+(defn- pod-config->fn-lookup
   [pod-config]
   (->> (for [ns (:pod/namespaces pod-config)
              :let [ns-name (:pod/ns ns)]
              var (:pod/vars ns)
-             :let [{:var/keys [name fn] :racer/keys [include-context?]} var]]
-         [(str ns-name "/" name) [fn include-context?]])
+             :let [{:var/keys [name fn]} var]]
+         [(str ns-name "/" name) [fn]])
        (into {})))
 
 
 ;; I/O accounting
 
-(defn format-exception
+(defn- format-exception
   [encode-fn e id]
   {"ex-message" (ex-message e)
    "ex-data" (encode-fn
@@ -39,13 +39,13 @@
    "id" id
    "status" ["done" "error"]})
 
-(defn format-result
+(defn- format-result
   [encode-fn result id]
   {"value" (encode-fn result)
    "id" id
    "status" ["done"]})
 
-(defn decode-message
+(defn- decode-message
   [message decode-fn]
   (let [{:strs [op id var args]} message]
     {:op (-> op bencode/bytes->str keyword)
@@ -56,15 +56,6 @@
 
 ;; Launch function
 
-(defn build-context
-  [id]
-  {:out-fn (fn [string]
-             (bencode/write-ben {"id" id
-                                 "out" string}))
-   :err-fn (fn [string]
-             (bencode/write-ben {"id" id
-                                 "err" string}))})
-
 (defn launch
   "Launch pod using the supplied config. Config is a map describing pod
   behavior. Example:
@@ -74,21 +65,7 @@
      :pod/vars [{:var/name \"add\"
                  :var/fn +}
                 {:var/name \"subtract\"
-                 :var/fn -}]}]}
-
-  If a var's function needs to print to stdout or stderr via the pod interface,
-  set :racer/include-context? to true and the first argument to the function
-  will be a map with :out-fn and :err-fn set to functions that when called will
-  send the passed string back to the parent process. Example of a function that
-  prints to stdout:
-
-  {:pod/namespaces
-   [{:pod/ns \"pod.mathio\"
-     :pod/vars [{:var/name \"add-and-print\"
-                 :var/fn (fn [ctx & args]
-                           (let [{:keys [out-fn]} ctx]
-                             (out-fn (apply + args))))
-                 :racer/include-context? true}]}]}"
+                 :var/fn -}]}]}"
   [pod-config]
   (let [describe-map (pod-config->describe-map pod-config)
         fn-lookup (pod-config->fn-lookup pod-config)
@@ -101,9 +78,7 @@
             :describe (do (bencode/write-ben describe-map)
                           (recur))
             :invoke (do (try
-                          (let [[invoke-fn include-context?] (fn-lookup var)
-                                args (cond->> args
-                                       include-context? (cons (build-context id)))
+                          (let [[invoke-fn] (fn-lookup var)
                                 result (binding [*out* (PodWriter. id)]
                                          (apply invoke-fn args))]
                             (bencode/write-ben (format-result encode-fn result id)))

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Remove old context handling.
+
 ## v0.1.4 - 2022-10-23
 
 Initial release with a version assigned.
