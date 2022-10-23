@@ -1,0 +1,16 @@
+[
+   {
+      "name":"pod-racer.PodWriter",
+      "fields":[
+         {
+            "name":"state"
+         }
+      ],
+      "methods":[
+         {
+            "name":"state",
+            "parameterTypes":[]
+         }
+      ]
+   }
+]

@@ -1,27 +1,10 @@
 (ns pod-racer.core
   (:require
     [clojure.edn :as edn]
-
-    [bencode.core :as bencode]
-    )
+    [pod-racer.bencode :as bencode])
   (:import
     (java.io PushbackInputStream)
-    ))
-
-;; Bencode helpers
-
-(defn read-ben
-  [in]
-  (bencode/read-bencode in))
-
-(defn write-ben
-  [data]
-  (bencode/write-bencode System/out data)
-  (.flush System/out))
-
-(defn bytes->str [^"[B" v]
-  (String. v))
-
+    (pod-racer PodWriter)))
 
 ;; Config parsing
 
@@ -65,10 +48,10 @@
 (defn decode-message
   [message decode-fn]
   (let [{:strs [op id var args]} message]
-    {:op (-> op bytes->str keyword)
-     :id (some-> id bytes->str (or "unknown"))
-     :var (some-> var bytes->str)
-     :args (some-> args bytes->str decode-fn)}))
+    {:op (-> op bencode/bytes->str keyword)
+     :id (some-> id bencode/bytes->str (or "unknown"))
+     :var (some-> var bencode/bytes->str)
+     :args (some-> args bencode/bytes->str decode-fn)}))
 
 
 ;; Launch function
@@ -76,11 +59,11 @@
 (defn build-context
   [id]
   {:out-fn (fn [string]
-             (write-ben {"id" id
-                         "out" string}))
+             (bencode/write-ben {"id" id
+                                 "out" string}))
    :err-fn (fn [string]
-             (write-ben {"id" id
-                         "err" string}))})
+             (bencode/write-ben {"id" id
+                                 "err" string}))})
 
 (defn launch
   "Launch pod using the supplied config. Config is a map describing pod
@@ -112,17 +95,18 @@
         in (PushbackInputStream. System/in)
         [encode-fn decode-fn] [pr-str edn/read-string]]
     (loop []
-      (when-some [message (try (read-ben in) (catch java.io.EOFException _e nil))]
+      (when-some [message (try (bencode/read-ben in) (catch java.io.EOFException _e nil))]
         (let [{:keys [op id var args]} (decode-message message decode-fn)]
           (case op
-            :describe (do (write-ben describe-map)
+            :describe (do (bencode/write-ben describe-map)
                           (recur))
             :invoke (do (try
                           (let [[invoke-fn include-context?] (fn-lookup var)
                                 args (cond->> args
                                        include-context? (cons (build-context id)))
-                                result (apply invoke-fn args)]
-                            (write-ben (format-result encode-fn result id)))
+                                result (binding [*out* (PodWriter. id)]
+                                         (apply invoke-fn args))]
+                            (bencode/write-ben (format-result encode-fn result id)))
                           (catch Throwable e
-                            (write-ben (format-exception encode-fn e id))))
+                            (bencode/write-ben (format-exception encode-fn e id))))
                         (recur))))))))
